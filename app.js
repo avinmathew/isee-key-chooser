@@ -64,20 +64,10 @@ function initSongSelect() {
     if (e.params && e.params.data.id) {
       selectedSong = e.params.data;
       if (selectedSong.id) {
-        // Determine which sharp or flat scale based on key
+        // Determine which sharp or flat transpose scale based on original key
         const flatKey = selectedSong.key.includes('b') || selectedSong.key.includes('F');
         notes = flatKey ? flatNotes : sharpNotes;
 
-        $('svg text').each(function() {
-          const note = $(this).text().slice(0, -1);
-          const replacementNote = flatKey ? sharpToFlat[note] : flatToSharp[note]
-          // Regular notes will be undefined and aren't replaced
-          if (replacementNote) {
-            $(this).text($(this).text().replace(note, replacementNote));
-          }
-        });
-
-        // Default to original key
         selectedSong.selectedLowNumber  = selectedSong.low;
         selectedSong.selectedHighNumber = selectedSong.high;
         selectedSong.selectedLowNote    = noteFromMidiNumber(selectedSong.selectedLowNumber);
@@ -102,10 +92,27 @@ function initKeySelect() {
     $(`#key-${i}`).parent().on('click', function() {
       deselectAllKeys();
       $(`#key-${i}`).parent().addClass('selected');
+
+      // Determine which sharp or flat keyboard scale based on selected key
+      const selectedKey = $(`#key-${i}`).text();
+      const flatKey = selectedKey.includes('b') || selectedKey === 'F';
+      notes = flatKey ? flatNotes : sharpNotes;
+
       selectedSong.selectedLowNumber  = selectedSong.low + i - 6;
       selectedSong.selectedHighNumber = selectedSong.high + i - 6;
       selectedSong.selectedLowNote    = noteFromMidiNumber(selectedSong.selectedLowNumber);
       selectedSong.selectedHighNote   = noteFromMidiNumber(selectedSong.selectedHighNumber);
+
+      // Change notes on keyboard
+      $('svg text').each(function() {
+        const note = $(this).text().slice(0, -1);
+        const replacementNote = flatKey ? sharpToFlat[note] : flatToSharp[note]
+        // Regular notes will be undefined and aren't replaced
+        if (replacementNote) {
+          $(this).text($(this).text().replace(note, replacementNote));
+        }
+      });
+
       renderSongRange();
     });
   }
