@@ -81,6 +81,9 @@ function initSongSelect() {
         }
         renderSongRange();
         renderPossibleKeys();
+
+        // Select original key by triggering event handler
+        $('#key-6').parent().click();
       }
     }
   });
