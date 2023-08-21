@@ -19,6 +19,7 @@ let notes = sharpNotes;
 let keyboard;
 let selectedWl, selectedSong;
 let vocalRangeX1, vocalRangeX2, songRangeX1, songRangeX2;
+let possibleKeys = [];
 
 const VOCAL_FILL = '#00ea9c';
 const SONG_FILL = '#73ceff';
@@ -46,7 +47,12 @@ function initWlSelect() {
         selectedWl.highNote = noteFromMidiNumber(selectedWl.high);
 
         renderVocalRange();
-        renderPossibleKeys();
+        if (selectedSong) {
+          renderSongRange();
+          renderPossibleKeys();
+          // Select original key by triggering event handler
+          $('#key-6').parent().click();
+        }
       }
     }
   });
@@ -101,8 +107,9 @@ function initKeySelect() {
       const flatKey = selectedKey.includes('b') || selectedKey === 'F';
       notes = flatKey ? flatNotes : sharpNotes;
 
-      selectedSong.selectedLowNumber  = selectedSong.low + i - 6;
-      selectedSong.selectedHighNumber = selectedSong.high + i - 6;
+      // Get range from possibleKeys, which could be modified based on the WL range
+      selectedSong.selectedLowNumber  = possibleKeys[i].low;
+      selectedSong.selectedHighNumber = possibleKeys[i].high;
       selectedSong.selectedLowNote    = noteFromMidiNumber(selectedSong.selectedLowNumber);
       selectedSong.selectedHighNote   = noteFromMidiNumber(selectedSong.selectedHighNumber);
 
@@ -223,14 +230,20 @@ function fillKeyboard() {
 }
 
 function renderPossibleKeys() {
-  // Clear active from all keys
+  // Clear active and description from all keys
   for (let i = 1; i < 13; i++) {
-    $(`#key-${i}`).parent().removeClass('active');
+    $(`#key-${i}`).parent().removeClass('preferred');
+    $(`#key-${i}`).parent().removeClass('maybe');
+    if (i === 6) {
+      $(`#key-${i}-desc`).text('Orig.');
+    } else {
+      $(`#key-${i}-desc`).text('');
+    }
   }
-  
+  possibleKeys = [];
+ 
   if (selectedSong) {
     $('#possible-keys').show();
-    keys = [];
     let currentKey = selectedSong.key;
     // Transpose up 6
     for(let i = 0; i < 7; i++) {
@@ -240,12 +253,59 @@ function renderPossibleKeys() {
       const transposedKey = notes[transposedIndex];
       $(`#key-${6+i}`).text(transposedKey);
 
-      if (selectedWl && selectedWl.low <= selectedSong.low + i && selectedWl.high >= selectedSong.high + i) {
-        if (!keys.includes(transposedKey)) {
-          keys.push(transposedKey);
-          $(`#key-${6+i}`).parent().addClass('active');
+      if (selectedWl) {
+        // If in regular range
+        if (selectedWl.low <= selectedSong.low + i && selectedWl.high >= selectedSong.high + i) {
+          possibleKeys[6 + i] = {
+            key: transposedKey,
+            low: selectedSong.low + i,
+            high: selectedSong.high + i
+          };
+          $(`#key-${6+i}`).parent().addClass('preferred');
+        // Check if one octave higher is in range
+        } else if (selectedWl.low <= selectedSong.low + i + 12 && selectedWl.high >= selectedSong.high + i + 12) {
+          possibleKeys[6 + i] = {
+            key: transposedKey,
+            low: selectedSong.low + i + 12,
+            high: selectedSong.high + i + 12
+          };
+          $(`#key-${6+i}`).parent().addClass('preferred');
+        // Check if one octave lower is in range
+        } else if (selectedWl.low <= selectedSong.low + i - 12 && selectedWl.high >= selectedSong.high + i - 12) {
+          possibleKeys[6 + i] = {
+            key: transposedKey,
+            low: selectedSong.low + i - 12,
+            high: selectedSong.high + i - 12
+          };
+          $(`#key-${6+i}`).parent().addClass('preferred');
+        } else if (selectedSong.high - selectedSong.low >= 20) { // Check if close to 2 octaves and if so, increase low or decrease high
+          if (selectedWl.low <= selectedSong.low + i + 12 && selectedWl.high >= selectedSong.high + i) {
+            possibleKeys[6 + i] = {
+              key: transposedKey,
+              low: selectedSong.low + i + 12,
+              high: selectedSong.high + i
+            };
+            $(`#key-${6+i}`).parent().addClass('maybe');
+            $(`#key-${6+i}-desc`).text('+low');
+          } else if (selectedWl.low <= selectedSong.low + i && selectedWl.high >= selectedSong.high + i - 12) {
+            possibleKeys[6 + i] = {
+              key: transposedKey,
+              low: selectedSong.low + i,
+              high: selectedSong.high + i -12
+            };
+            $(`#key-${6+i}`).parent().addClass('maybe');
+            $(`#key-${6+i}-desc`).text('-high');
+          }
         }
       }
+      // Use regular range if no WL or nothing fits
+      if (!possibleKeys[6 + i]) {
+        possibleKeys[6 + i] = {
+          key: transposedKey,
+          low: selectedSong.low + i,
+          high: selectedSong.high + i
+        };
+      } 
     }
     currentKey = selectedSong.key;
     // Tranpose down 5
@@ -256,12 +316,59 @@ function renderPossibleKeys() {
       const transposedKey = notes[transposedIndex];
       $(`#key-${6-i}`).text(transposedKey);
 
-      if (selectedWl && selectedWl.low <= selectedSong.low - i && selectedWl.high >= selectedSong.high - i) {
-        if (!keys.includes(transposedKey)) {
-          keys.push(transposedKey);
-          $(`#key-${6-i}`).parent().addClass('active')
+      if (selectedWl) {
+        // If in regular range
+        if (selectedWl.low <= selectedSong.low - i && selectedWl.high >= selectedSong.high - i) {
+          possibleKeys[6 - i] = {
+            key: transposedKey,
+            low: selectedSong.low - i,
+            high: selectedSong.high - i
+          };
+          $(`#key-${6-i}`).parent().addClass('preferred');
+        // Check if one octave higher is in range
+        } else if (selectedWl.low <= selectedSong.low - i + 12 && selectedWl.high >= selectedSong.high - i + 12) {
+          possibleKeys[6 - i] = {
+            key: transposedKey,
+            low: selectedSong.low - i + 12,
+            high: selectedSong.high - i + 12
+          };
+          $(`#key-${6-i}`).parent().addClass('preferred');
+        // Check if one octave lower is in range
+        } else if (selectedWl.low <= selectedSong.low - i - 12 && selectedWl.high >= selectedSong.high - i - 12) {
+          possibleKeys[6 - i] = {
+            key: transposedKey,
+            low: selectedSong.low - i - 12,
+            high: selectedSong.high - i - 12
+          };
+          $(`#key-${6-i}`).parent().addClass('preferred');
+        } else if (selectedSong.high - selectedSong.low > 20) { // Check if close to 2 octaves and if so, increase low or decrease high
+          if (selectedWl.low <= selectedSong.low - i + 12 && selectedWl.high >= selectedSong.high - i) {
+            possibleKeys[6 - i] = {
+              key: transposedKey,
+              low: selectedSong.low - i + 12,
+              high: selectedSong.high - i
+            };
+            $(`#key-${6-i}`).parent().addClass('maybe');
+            $(`#key-${6-i}-desc`).text('+low');
+          } else if (selectedWl.low <= selectedSong.low - i && selectedWl.high >= selectedSong.high - i - 12) {
+            possibleKeys[6 - i] = {
+              key: transposedKey,
+              low: selectedSong.low - i,
+              high: selectedSong.high - i -12
+            };
+            $(`#key-${6-i}`).parent().addClass('maybe');
+            $(`#key-${6-i}-desc`).text('-high');
+          }
         }
       }
+      // Use regular range if no WL or nothing fits
+      if (!possibleKeys[6 - i]) { 
+        possibleKeys[6 - i] = {
+          key: transposedKey,
+          low: selectedSong.low - i,
+          high: selectedSong.high - i
+        };
+      } 
     }
   }
 }
